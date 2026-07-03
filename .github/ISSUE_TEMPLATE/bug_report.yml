@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a defect so it can be reproduced and fixed.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please search existing issues first to avoid duplicates.
+        Do not paste real credentials, tokens, or sensitive file paths — redact them first.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+      placeholder: When I ran ..., I expected ..., but instead ...
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact `credscan` command you ran (redact any sensitive paths).
+      render: shell
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Line/regex detectors
+        - Agent-artifact / MCP config detection
+        - Scanner / directory walk / --staged
+        - Allowlist (.credscanignore / inline markers)
+        - Redaction / rendering
+        - CLI / options
+        - Other / not sure
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS + `python --version` + `credscan --version` (or the installed commit).
+      placeholder: Windows 11, Python 3.12, credscan 0.1.0
+    validations:
+      required: false
+  - type: textarea
+    id: output
+    attributes:
+      label: Output / error
+      description: Paste relevant `credscan` output. Redact any real secrets first.
+      render: shell
+    validations:
+      required: false

@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "credscan"
+version = "0.1.0"
+description = "A fast, zero-runtime-dependency secrets scanner for your code, your staged git changes, and your AI coding agent's config and session history"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Ama Senevirathne", email = "amasen02@gmail.com" }]
+requires-python = ">=3.10"
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Topic :: Security",
+    "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+Homepage = "https://github.com/amasen02/credscan"
+Issues = "https://github.com/amasen02/credscan/issues"
+
+[project.scripts]
+credscan = "credscan.cli:main"
+
+[project.optional-dependencies]
+test = ["pytest>=8", "ruff>=0.6"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
