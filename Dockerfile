@@ -3,7 +3,7 @@
 # ---- Test gate: fails the build if lint or the test suite fails ----------------
 # git is required at test time (the git-integration/staged-scan tests shell out to it) and at
 # runtime (credscan itself shells out to it for `scan --staged`) — not a test-only dependency.
-FROM python:3.13-slim AS test
+FROM python:3.14-slim AS test
 WORKDIR /src
 
 RUN apt-get update && apt-get install -y --no-install-recommends git \
@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir --root-user-action=ignore ".[test]" \
     && pytest -q
 
 # ---- Runtime: a fresh, minimal install with none of the test/lint tooling ------
-FROM python:3.13-slim AS runtime
+FROM python:3.14-slim AS runtime
 WORKDIR /scan
 
 RUN apt-get update && apt-get install -y --no-install-recommends git \
