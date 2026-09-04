@@ -1,5 +1,10 @@
 # credscan — secrets scanner for your code *and* your AI agent's memory
 
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/amasen02/credscan/badge)](https://securityscorecards.dev/viewer/?uri=github.com/amasen02/credscan)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10332/badge)](https://www.bestpractices.dev/en)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](.github/SECURITY.md)
+
+
 [![CI](https://github.com/amasen02/credscan/actions/workflows/ci.yml/badge.svg)](https://github.com/amasen02/credscan/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/amasen02/credscan/actions/workflows/codeql.yml/badge.svg)](https://github.com/amasen02/credscan/actions/workflows/codeql.yml)
 [![Python](https://img.shields.io/badge/Python-%E2%89%A53.10-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -161,3 +166,32 @@ including for commercial purposes, provided the copyright notice is retained.
 ## Author
 
 **Ama Senevirathne** — [GitHub](https://github.com/amasen02)
+
+---
+
+## 🌟 Fork, Build Upon & Extend This Project
+
+We deliberately built this repository to be **100% open, modular, and easy to fork and extend**:
+
+- 🔓 **Permissive MIT License**: Zero CLA, commercial use permitted, you keep full ownership of your contributions.
+- 🛡️ **Hardened Supply Chain**: Built with automated CI testing, OpenSSF Scorecard supply-chain security, and strict quality checks.
+- ⚡ **High-Performance Foundation**: Zero unnecessary bloat &mdash; clean architectural boundaries that make hacking on this code a joy.
+
+### 💡 High-Impact Ideas Ready for You to Build:
+- **Add detection patterns for OpenAI API keys, Anthropic tokens, and HuggingFace credentials**
+- **Add scanning for AI coding agent workspaces (.claude, .cursor, MCP server configs)**
+- **Build a pre-commit git hook generator (`credscan install-hook`)**
+- **Package a zero-dependency standalone binary for Linux / macOS / Windows CI runners**
+
+### 🚀 60-Second Quickstart
+```bash
+git clone https://github.com/amasen02/credscan.git
+cd credscan
+dotnet test
+```
+
+### 🤝 Frictionless Contributions
+1. **Fork** the repo & clone it locally.
+2. Create your feature branch (`git checkout -b feat/my-awesome-idea`).
+3. Verify tests pass cleanly.
+4. Open a PR &mdash; we review and merge PRs within 24–48 hours!
