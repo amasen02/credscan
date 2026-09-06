@@ -26,9 +26,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   threshold, so without a dedicated shape rule this extremely common credential type went
   undetected by every existing rule.
 
+### Changed
+
+- `credscan scan --staged` now loads `.credscanignore` from the git index rather than the working
+  tree. An untracked ignore file used to silence staged findings while appearing in no diff and no
+  commit, contradicting the documented guarantee that every suppression is reviewable; it is now
+  reported on stderr and has no effect until it is itself staged.
+- A path scan names every directory it pruned from the default exclude list on stderr, so a clean
+  run is never silently partial, and `--no-default-excludes` scans them (`dist/`, `build/`, and the
+  rest) — build output is a common landing place for a bundler-inlined `.env`.
+
 ### Fixed
 
+- `mcp-config-secret` no longer drops a secret whose JSON source form contains an escape. The
+  rule searched the raw text for the *parsed* string, so any value written with a JSON escape
+  (a PEM key's newlines, an embedded credential blob's quotes, a Windows path's backslashes)
+  was recognised as a secret and then discarded with no diagnostic; it now falls back to the
+  escaped source form. It also reports every location of a reused secret, not just the first.
 - Findings are now deduplicated by precedence (structural content rules, then shape-specific
   line rules, then the generic high-entropy fallback) so the same underlying secret is never
   reported twice under two different rule IDs — e.g. a GitHub token inside an MCP config was
   being flagged by both `github-token` and `mcp-config-secret` before this fix.
+
+### Removed
+
+- The OpenSSF Best Practices badge from the README. It pointed at bestpractices.dev project 10332,
+  which belongs to an unrelated third-party project, and linked to the site homepage rather than a
+  project page — credscan holds no such badge, so the claim was false.
+- `.github/SECURITY.md`, an unedited template that GitHub preferred over the real root
+  `SECURITY.md`: it carried an unfilled `<Project Name>` placeholder, a second reporting address
+  that conflicted with the documented one (so a private report could land in an unmonitored
+  mailbox), and control assertions not verifiable from the repository. The hand-written root
+  `SECURITY.md` is now the single policy.

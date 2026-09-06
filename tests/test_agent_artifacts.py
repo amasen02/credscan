@@ -183,3 +183,33 @@ def test_scan_directory_without_agent_artifacts_only_still_scans_everything(tmp_
     findings = scan_directory(tmp_path, Allowlist(), only_agent_artifacts=True)
 
     assert findings == []
+
+
+def test_mcp_config_rule_flags_a_secret_whose_source_form_contains_an_escape():
+    # A value carrying a newline (a pasted PEM key, an embedded JSON blob) is unescaped by
+    # json.loads, so it never appears literally in the source text. It must still be reported.
+    secret = f"prefix{chr(10)}{_HIGH_ENTROPY_TOKEN}"
+    content = json.dumps({"mcpServers": {"svc": {"env": {"TOKEN": secret}}}})
+    escaped_source_form = json.dumps(secret)[1:-1]
+
+    assert content.find(secret) == -1
+    assert list(_RULE.find(content)) == [(content.find(escaped_source_form), escaped_source_form)]
+
+
+def test_mcp_config_rule_reports_every_location_of_a_reused_secret():
+    content = json.dumps(
+        {
+            "mcpServers": {
+                "first": {"env": {"TOKEN": _HIGH_ENTROPY_TOKEN}},
+                "second": {"env": {"TOKEN": _HIGH_ENTROPY_TOKEN}},
+            }
+        }
+    )
+
+    offsets = [offset for offset, _match in _RULE.find(content)]
+
+    assert offsets == [
+        content.find(_HIGH_ENTROPY_TOKEN),
+        content.find(_HIGH_ENTROPY_TOKEN, content.find(_HIGH_ENTROPY_TOKEN) + 1),
+    ]
+    assert len(offsets) == 2

@@ -98,3 +98,26 @@ def test_scan_staged_finds_secrets_in_staged_content_only(tmp_path: Path):
 
     assert len(findings) == 1
     assert findings[0].file_path == "secret.env"
+
+
+def test_scan_directory_scans_excluded_directories_when_the_exclude_list_is_empty(tmp_path: Path):
+    build_output = tmp_path / "dist"
+    build_output.mkdir()
+    (build_output / "bundle.js").write_text(
+        "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n", encoding="utf-8"
+    )
+
+    findings = scan_directory(tmp_path, Allowlist(), excluded_dirs=())
+
+    assert [f.file_path for f in findings] == ["dist/bundle.js"]
+
+
+def test_scan_directory_reports_each_skipped_directory(tmp_path: Path):
+    (tmp_path / "dist").mkdir()
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "node_modules").mkdir()
+    skipped: list[str] = []
+
+    scan_directory(tmp_path, Allowlist(), on_skipped_directory=skipped.append)
+
+    assert sorted(skipped) == ["dist", "sub/node_modules"]

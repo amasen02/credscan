@@ -18,9 +18,18 @@ class Allowlist:
         if not ignore_file.is_file():
             return cls()
 
+        return cls.from_text(ignore_file.read_text(encoding="utf-8", errors="replace"))
+
+    @classmethod
+    def from_text(cls, text: str) -> "Allowlist":
+        """Parses ignore-file content that did not necessarily come from the working tree.
+
+        `--staged` reads the copy in the git index, so a suppression only takes effect once it
+        is itself staged and therefore visible in the diff being reviewed.
+        """
         patterns = tuple(
             stripped
-            for line in ignore_file.read_text(encoding="utf-8", errors="replace").splitlines()
+            for line in text.splitlines()
             if (stripped := line.strip()) and not stripped.startswith("#")
         )
         return cls(patterns)

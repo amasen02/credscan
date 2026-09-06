@@ -32,6 +32,19 @@ def repository_root(start_dir: str) -> str:
     return _run_git(["rev-parse", "--show-toplevel"], cwd=start_dir).strip()
 
 
+def index_file_content(repo_root: str, path: str) -> str | None:
+    """Returns a path's content as staged in the git index, or None if it isn't in the index.
+
+    Lets `--staged` read configuration (the `.credscanignore` allowlist) from the same place it
+    reads scanned content: an untracked or unstaged file appears in no diff, so honouring the
+    working-tree copy would let a suppression take effect without ever being reviewable.
+    """
+    try:
+        return _run_git(["show", f":{path}"], cwd=repo_root)
+    except NotAGitRepositoryError:
+        return None
+
+
 def staged_files(repo_root: str) -> list[StagedFile]:
     """Returns each staged file's path and its *staged* content (the git index blob), not the
     working-tree copy — that's what will actually land in the commit."""

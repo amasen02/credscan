@@ -44,3 +44,9 @@ def test_is_path_ignored_normalizes_windows_style_separators(tmp_path: Path):
 def test_is_line_ignored_detects_the_inline_marker():
     assert Allowlist.is_line_ignored('token = "abc"  # credscan:ignore') is True
     assert Allowlist.is_line_ignored('token = "abc"') is False
+
+
+def test_from_text_parses_patterns_without_touching_the_filesystem():
+    allowlist = Allowlist.from_text("# comment\n\nvendor/*\n*.lock\n")
+
+    assert allowlist.path_patterns == ("vendor/*", "*.lock")

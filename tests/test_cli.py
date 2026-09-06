@@ -128,3 +128,74 @@ def test_help_flag_exits_cleanly(flag: str):
     with pytest.raises(SystemExit) as excinfo:
         main([flag])
     assert excinfo.value.code == 0
+
+
+def test_scan_warns_on_stderr_when_default_excluded_directories_were_skipped(
+    tmp_path: Path, capsys
+):
+    build_output = tmp_path / "dist"
+    build_output.mkdir()
+    (build_output / "bundle.js").write_text(
+        "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n", encoding="utf-8"
+    )
+
+    exit_code = main(["scan", str(tmp_path)])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "no secrets found" in captured.out
+    assert "skipped 1 directory" in captured.err
+    assert "dist" in captured.err
+    assert "--no-default-excludes" in captured.err
+
+
+def test_no_default_excludes_flag_scans_build_output(tmp_path: Path, capsys):
+    build_output = tmp_path / "dist"
+    build_output.mkdir()
+    (build_output / "bundle.js").write_text(
+        "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n", encoding="utf-8"
+    )
+
+    exit_code = main(["scan", str(tmp_path), "--no-default-excludes"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "dist/bundle.js" in captured.out
+    assert captured.err == ""
+
+
+def test_scan_staged_ignores_an_unstaged_credscanignore(tmp_path: Path, capsys):
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "user.email", "test@example.com")
+    _git(tmp_path, "config", "user.name", "Test")
+    (tmp_path / "secret.env").write_text(
+        "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n", encoding="utf-8"
+    )
+    _git(tmp_path, "add", "secret.env")
+    # Untracked: it appears in no diff and no commit, so it must not silence the gate.
+    (tmp_path / ".credscanignore").write_text("*.env\n", encoding="utf-8")
+
+    exit_code = main(["scan", "--staged", str(tmp_path)])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert "secret.env" in captured.out
+    assert ".credscanignore" in captured.err
+
+
+def test_scan_staged_honours_a_staged_credscanignore(tmp_path: Path, capsys):
+    _git(tmp_path, "init", "-q")
+    _git(tmp_path, "config", "user.email", "test@example.com")
+    _git(tmp_path, "config", "user.name", "Test")
+    (tmp_path / "secret.env").write_text(
+        "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n", encoding="utf-8"
+    )
+    (tmp_path / ".credscanignore").write_text("*.env\n", encoding="utf-8")
+    _git(tmp_path, "add", "secret.env", ".credscanignore")
+
+    exit_code = main(["scan", "--staged", str(tmp_path)])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "no secrets found" in captured.out
+    assert captured.err == ""

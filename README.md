@@ -1,8 +1,7 @@
 # credscan — secrets scanner for your code *and* your AI agent's memory
 
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/amasen02/credscan/badge)](https://securityscorecards.dev/viewer/?uri=github.com/amasen02/credscan)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/10332/badge)](https://www.bestpractices.dev/en)
-[![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](.github/SECURITY.md)
+[![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](SECURITY.md)
 
 
 [![CI](https://github.com/amasen02/credscan/actions/workflows/ci.yml/badge.svg)](https://github.com/amasen02/credscan/actions/workflows/ci.yml)
@@ -15,17 +14,19 @@
 **gitleaks scans your code. credscan also scans your AI agent's memory.**
 
 AI coding agents (Claude Code, Cursor, Codex/VS Code) read and write plaintext config every
-session: `.claude/settings.json`, `.cursor/mcp.json`, `.codex/`, and any `mcp.json` MCP server
-config, all of which routinely embed real API keys and tokens in `env`/`headers`/`args` fields.
-An agent can also paste a real secret straight into a session transcript. None of that is source
-code, so a code-only scanner never looks there. credscan does — by default, not as an opt-in.
+session: `.claude/`, `.cursor/`, `.codex/`, and any `mcp.json`/`.mcp.json` MCP server config,
+which routinely embed real API keys and tokens in `env`/`headers`/`args` fields. An agent can
+also paste a real secret straight into a session transcript. None of that is source code, so a
+code-only scanner never looks there. credscan does — by default, not as an opt-in. Every rule
+runs over those files; the structural `mcp-config-secret` rule additionally claims any JSON
+document with a top-level `mcpServers` object, whatever its filename.
 
 ```
 $ credscan scan .
 [1] HIGH   Hardcoded secret in MCP server config (mcp-config-secret)
-    .claude/settings.json:5  ghp_****************************1f0a
+    .mcp.json:10  ghp_********************************0a
 [2] HIGH   AWS access key ID (aws-access-key-id)
-    src/config.env:12  AKIA****************MPLE
+    src/config.env:12  AKIA**************LE
 
 credscan: 2 finding(s) across 2 file(s).
 ```
@@ -60,9 +61,11 @@ coding agents converged on for MCP server configuration: a `mcpServers` block wh
 `headers`, and `args` fields are exactly where a hardcoded token ends up. A `key: value` regex
 built for `.env` files or shell scripts routinely misses it once the key is JSON-quoted —
 `"API_KEY": "..."` doesn't match a pattern written for `API_KEY=...` or `API_KEY: ...`. credscan's
-`mcp-config-secret` rule parses the JSON structurally instead of guessing at line shape, so it
-generalizes across Claude Code, Cursor, and VS Code's MCP config convention rather than needing a
-bespoke regex per tool.
+`mcp-config-secret` rule parses the JSON structurally instead of guessing at line shape: it
+fires on any JSON document with a top-level `mcpServers` object (`.mcp.json`, `.cursor/mcp.json`,
+VS Code's `mcp.json`), so it generalizes across the convention rather than needing a bespoke regex
+per tool. Agent files with a different shape — `.claude/settings.json`, `.codex/config.toml`,
+session transcripts — are still scanned, by the generic detectors below.
 
 ## Usage
 
@@ -76,10 +79,24 @@ credscan scan [path] [options]
 | `--staged` | Scan the git *index* (what `git commit` would actually commit), not the working tree. |
 | `--agent-artifacts` | Scan only AI-agent artifact paths: `.claude/`, `.cursor/`, `.codex/`, any `mcp.json`, and local session/shell-history logs (`.jsonl`, `.bash_history`, `.zsh_history`, PowerShell history). Combine with `--staged` to check only staged agent-config changes. |
 | `--json` | Emit machine-readable JSON instead of text — pipe into `jq` or a CI gate. |
+| `--no-default-excludes` | Walk the excluded directories too (see below). Use it to scan build output, where a bundler can inline a real `.env`. |
 | `-h, --help` | Show help. |
 
 Exit codes: `0` clean, `1` findings present (CI-friendly — fail the build on it), `2` usage or
 filesystem error (not a directory, not a git repo for `--staged`, etc).
+
+#### Directories skipped by default
+
+A path scan prunes these directory names anywhere in the tree:
+
+```
+.git  node_modules  __pycache__  .venv  venv  .mypy_cache  .pytest_cache  .tox  dist  build
+```
+
+`dist/` and `build/` are included in that list, so a bundler that inlined `.env` into build output
+is **not** covered by a default run. Whenever a directory is pruned, credscan says so on stderr
+(stdout stays clean for `--json`), and `--no-default-excludes` scans the whole tree. `--staged`
+scans exactly the staged paths and prunes nothing.
 
 ### Detectors
 
@@ -102,8 +119,12 @@ filesystem error (not a directory, not a git repo for `--staged`, etc).
   every scanned/staged path.
 - An inline `# credscan:ignore` marker on a line suppresses just that line.
 
-Both are plain, visible, reviewable text — there is no way to silently suppress a finding that
-doesn't show up in a diff.
+Both are plain, visible, reviewable text. In `--staged` mode the allowlist is read from the git
+index (`git show :.credscanignore`), so a suppression only takes effect once it is itself staged
+and therefore visible in the diff being reviewed; an unstaged or untracked ignore file is reported
+on stderr and ignored. A path scan (`credscan scan .`) has no index to consult and reads the
+working-tree file as-is, so when you audit a clean path scan, check whether a `.credscanignore` is
+present and tracked.
 
 ## Tests
 
@@ -179,7 +200,6 @@ We deliberately built this repository to be **100% open, modular, and easy to fo
 
 ### 💡 High-Impact Ideas Ready for You to Build:
 - **Add detection patterns for OpenAI API keys, Anthropic tokens, and HuggingFace credentials**
-- **Add scanning for AI coding agent workspaces (.claude, .cursor, MCP server configs)**
 - **Build a pre-commit git hook generator (`credscan install-hook`)**
 - **Package a zero-dependency standalone binary for Linux / macOS / Windows CI runners**
 
@@ -187,7 +207,8 @@ We deliberately built this repository to be **100% open, modular, and easy to fo
 ```bash
 git clone https://github.com/amasen02/credscan.git
 cd credscan
-dotnet test
+pip install -e ".[test]"
+pytest
 ```
 
 ### 🤝 Frictionless Contributions

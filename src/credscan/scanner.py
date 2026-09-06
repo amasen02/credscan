@@ -1,6 +1,7 @@
 """Turns a directory tree or a set of staged git files into a sorted list of findings."""
 
 import os
+from collections.abc import Callable, Collection, Iterator
 from pathlib import Path
 
 from credscan import git_integration
@@ -85,10 +86,21 @@ def _line_start_offsets(content: str) -> list[int]:
 
 
 def scan_directory(
-    root: Path, allowlist: Allowlist, *, only_agent_artifacts: bool = False
+    root: Path,
+    allowlist: Allowlist,
+    *,
+    only_agent_artifacts: bool = False,
+    excluded_dirs: Collection[str] = DEFAULT_EXCLUDED_DIRS,
+    on_skipped_directory: Callable[[str], None] | None = None,
 ) -> list[Finding]:
+    """Scans every readable text file under `root`.
+
+    Directory names in `excluded_dirs` are pruned from the walk; pass an empty collection to
+    scan the whole tree (build output included). Every pruned directory is reported to
+    `on_skipped_directory` so a caller can tell the user that a clean run was partial.
+    """
     findings: list[Finding] = []
-    for file_path in _iter_files(root):
+    for file_path in _iter_files(root, excluded_dirs, on_skipped_directory):
         relative = str(file_path.relative_to(root)).replace("\\", "/")
         if allowlist.is_path_ignored(relative):
             continue
@@ -116,9 +128,21 @@ def scan_staged(
     return sorted(findings, key=lambda f: (f.file_path, f.line_number, f.rule_id))
 
 
-def _iter_files(root: Path):
+def _iter_files(
+    root: Path,
+    excluded_dirs: Collection[str] = DEFAULT_EXCLUDED_DIRS,
+    on_skipped_directory: Callable[[str], None] | None = None,
+) -> Iterator[Path]:
     for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
-        dirnames[:] = [d for d in dirnames if d not in DEFAULT_EXCLUDED_DIRS]
+        kept = []
+        for name in dirnames:
+            if name in excluded_dirs:
+                if on_skipped_directory is not None:
+                    skipped = Path(dirpath, name).relative_to(root)
+                    on_skipped_directory(str(skipped).replace("\\", "/"))
+            else:
+                kept.append(name)
+        dirnames[:] = kept
         for filename in sorted(filenames):
             yield Path(dirpath) / filename
 

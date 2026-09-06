@@ -63,3 +63,17 @@ def test_staged_files_excludes_unstaged_files(git_repo: Path):
 
 def test_staged_files_returns_empty_list_when_nothing_is_staged(git_repo: Path):
     assert git_integration.staged_files(str(git_repo)) == []
+
+
+def test_index_file_content_returns_the_staged_copy(git_repo: Path):
+    (git_repo / ".credscanignore").write_text("*.env\n", encoding="utf-8")
+    _git(git_repo, "add", ".credscanignore")
+    (git_repo / ".credscanignore").write_text("everything/*\n", encoding="utf-8")
+
+    assert git_integration.index_file_content(str(git_repo), ".credscanignore") == "*.env\n"
+
+
+def test_index_file_content_returns_none_for_an_untracked_file(git_repo: Path):
+    (git_repo / ".credscanignore").write_text("*.env\n", encoding="utf-8")
+
+    assert git_integration.index_file_content(str(git_repo), ".credscanignore") is None

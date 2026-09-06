@@ -1,15 +1,18 @@
 """AI coding-agent artifacts: config directories, MCP server configs, and session logs.
 
 gitleaks and trufflehog scan source code. Neither specifically parses the JSON shape AI coding
-agents use for MCP server configuration (Claude Code's `.mcp.json`/`.claude/settings.json`,
-Cursor's `.cursor/mcp.json`, VS Code's `mcp.json`), where a hardcoded token in an `env`, `headers`,
-or `args` field is a real, plaintext, committable secret that a line-oriented `key: value` regex
-alone can miss once the key is JSON-quoted. This module adds:
+agents use for MCP server configuration (Claude Code's `.mcp.json`, Cursor's `.cursor/mcp.json`,
+VS Code's `mcp.json`), where a hardcoded token in an `env`, `headers`, or `args` field is a real,
+plaintext, committable secret that a line-oriented `key: value` regex alone can miss once the key
+is JSON-quoted. This module adds:
 
 - `is_agent_artifact_path`, used by `credscan scan --agent-artifacts` to scope a scan to just
   these paths.
 - `McpConfigSecretRule`, a structural (JSON-parsing) content rule that walks `mcpServers` blocks
   looking for literal secrets, independent of the generic line-based detectors in `detectors.py`.
+  It keys on the document *shape*, not the filename: any JSON with a top-level `mcpServers`
+  object. Differently shaped agent files (`.claude/settings.json`, session transcripts) are
+  scanned by the generic detectors instead.
 """
 
 import json
@@ -65,18 +68,55 @@ class McpConfigSecretRule:
         if not isinstance(document, dict) or not isinstance(document.get("mcpServers"), dict):
             return
 
-        reported_offsets: set[int] = set()
+        reported: set[tuple[int, str]] = set()
         for value in _iter_candidate_values(document["mcpServers"]):
             if not _looks_like_secret_value(value):
                 continue
-            offset = content.find(value)
-            if offset == -1 or offset in reported_offsets:
-                continue
-            reported_offsets.add(offset)
-            yield offset, value
+            for offset, source_text in _iter_source_occurrences(content, value):
+                if (offset, source_text) in reported:
+                    continue
+                reported.add((offset, source_text))
+                yield offset, source_text
 
 
 AGENT_ARTIFACT_CONTENT_RULES = [McpConfigSecretRule()]
+
+
+def _iter_source_occurrences(content: str, value: str) -> Iterable[tuple[int, str]]:
+    """Yields every offset in the raw JSON source where `value` was written, with the source
+    text.
+
+    `value` comes back from `json.loads` already unescaped, so a secret whose source form
+    carries a JSON escape (a Windows path, an embedded JSON credential blob, a PEM key with
+    newlines) is simply absent from `content` as a literal: searching for it returns -1 and
+    the secret used to be dropped with no diagnostic. Fall back to the escaped source form so
+    those are reported too, and return *every* occurrence -- the same credential reused under
+    two servers is two locations a reader has to fix, not one.
+    """
+    for needle in _source_forms(value):
+        offsets = _all_offsets(content, needle)
+        if offsets:
+            yield from ((offset, needle) for offset in offsets)
+            return
+
+
+def _source_forms(value: str) -> Iterable[str]:
+    """The literal, then the ways `json.dumps` would have escaped it in the source text."""
+    forms = [value, json.dumps(value)[1:-1], json.dumps(value, ensure_ascii=False)[1:-1]]
+    seen: set[str] = set()
+    for form in forms:
+        if form and form not in seen:
+            seen.add(form)
+            yield form
+
+
+def _all_offsets(content: str, needle: str) -> list[int]:
+    offsets = []
+    start = content.find(needle)
+    while start != -1:
+        offsets.append(start)
+        start = content.find(needle, start + 1)
+    return offsets
 
 
 def _iter_candidate_values(node: object) -> Iterable[str]:
