@@ -3,7 +3,7 @@ requires = ["setuptools>=84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "credscan"
+name = "amasen-credscan"
 version = "0.1.0"
 description = "A fast, zero-runtime-dependency secrets scanner for your code, your staged git changes, and your AI coding agent's config and session history"
 readme = "README.md"
