@@ -1,12 +1,20 @@
+import importlib.util
 import json
 from pathlib import Path
 
 import pytest
 
-from scripts.generate_audit_requirements import (
-    AuditRequirementsError,
-    generate_requirements,
+_SCRIPT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "generate_audit_requirements.py"
+_SCRIPT_SPEC = importlib.util.spec_from_file_location(
+    "credscan_generate_audit_requirements", _SCRIPT_PATH
 )
+if _SCRIPT_SPEC is None or _SCRIPT_SPEC.loader is None:
+    raise ImportError(f"Unable to load audit requirements script from {_SCRIPT_PATH}")
+_AUDIT_REQUIREMENTS = importlib.util.module_from_spec(_SCRIPT_SPEC)
+_SCRIPT_SPEC.loader.exec_module(_AUDIT_REQUIREMENTS)
+
+AuditRequirementsError = _AUDIT_REQUIREMENTS.AuditRequirementsError
+generate_requirements = _AUDIT_REQUIREMENTS.generate_requirements
 
 
 class FakeDistribution:
