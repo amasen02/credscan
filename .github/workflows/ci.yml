@@ -47,7 +47,7 @@ jobs:
 
       - name: Dependency audit
         run: |
-          python -m pip install --quiet --upgrade pip pip-audit
+          python -m pip install --quiet --upgrade pip setuptools pip-audit
           # Audit exact installed third-party versions. The unpublished editable project is
           # excluded only when its parsed local source is exactly this checkout.
           python scripts/generate_audit_requirements.py --root . --output .pip-audit-requirements.txt
