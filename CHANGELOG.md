@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Packaging metadata now uses the distinct distribution name `amasen-credscan`. The import
+  package and `credscan` command remain unchanged; the README documents source and local-wheel
+  installation while the distribution is unpublished.
+- Removed stale competitor comparisons and unverified popularity figures from the README; the
+  documentation now describes this project's scope directly.
+- Dependency auditing of exact installed third-party versions is a required CI step. Audit
+  installation, collection, or vulnerability failures now fail the workflow rather than being
+  suppressed.
 - `credscan scan --staged` now loads `.credscanignore` from the git index rather than the working
   tree. An untracked ignore file used to silence staged findings while appearing in no diff and no
   commit, contradicting the documented guarantee that every suppression is reviewable; it is now

@@ -1,4 +1,4 @@
-# credscan — secrets scanner for your code *and* your AI agent's memory
+# credscan — secrets scanner for code and AI-agent artifacts
 
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/amasen02/credscan/badge)](https://securityscorecards.dev/viewer/?uri=github.com/amasen02/credscan)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](SECURITY.md)
@@ -11,15 +11,14 @@
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-blue)](CODE_OF_CONDUCT.md)
 
-**gitleaks scans your code. credscan also scans your AI agent's memory.**
+**Scan source trees, staged changes, and AI-agent artifacts.**
 
 AI coding agents (Claude Code, Cursor, Codex/VS Code) read and write plaintext config every
 session: `.claude/`, `.cursor/`, `.codex/`, and any `mcp.json`/`.mcp.json` MCP server config,
 which routinely embed real API keys and tokens in `env`/`headers`/`args` fields. An agent can
-also paste a real secret straight into a session transcript. None of that is source code, so a
-code-only scanner never looks there. credscan does — by default, not as an opt-in. Every rule
-runs over those files; the structural `mcp-config-secret` rule additionally claims any JSON
-document with a top-level `mcpServers` object, whatever its filename.
+also paste a real secret straight into a session transcript. credscan includes these paths in its
+default scan. Every rule runs over them; the structural `mcp-config-secret` rule additionally
+parses any JSON document with a top-level `mcpServers` object, whatever its filename.
 
 ```
 $ credscan scan .
@@ -34,14 +33,23 @@ credscan: 2 finding(s) across 2 file(s).
 ## Quickstart
 
 ```bash
-pip install credscan          # once published to PyPI
-# or, from source:
+# This project is not published to PyPI. Install from a checkout:
 git clone https://github.com/amasen02/credscan.git && cd credscan
-pip install -e .
+python -m pip install .
 
 credscan scan .                # scan a directory (current dir by default)
 credscan scan --staged         # scan only what's about to be committed
 credscan scan --agent-artifacts  # scan only .claude/.cursor/.codex/MCP configs/session logs
+```
+
+The distribution metadata is named `amasen-credscan`; the Python import package and command stay
+`credscan`. That distribution name has not been published, so supported installation is from a
+source checkout or a wheel you build locally:
+
+```bash
+python -m pip install build
+python -m build
+python -m pip install dist/amasen_credscan-0.1.0-py3-none-any.whl
 ```
 
 ### Docker
@@ -52,20 +60,13 @@ docker run --rm -v "$PWD":/scan credscan .
 docker run --rm -v "$PWD":/scan credscan --agent-artifacts .
 ```
 
-## Why this scope
+## Scope
 
-gitleaks (27,982★), trufflehog (26,943★), git-secrets (13,334★), and detect-secrets (4,582★)
-already do generic source-code secret scanning extremely well — there is no room for a fifth
-entrant with the same feature set. What none of them specifically parse for is the JSON shape AI
-coding agents converged on for MCP server configuration: a `mcpServers` block whose `env`,
-`headers`, and `args` fields are exactly where a hardcoded token ends up. A `key: value` regex
-built for `.env` files or shell scripts routinely misses it once the key is JSON-quoted —
-`"API_KEY": "..."` doesn't match a pattern written for `API_KEY=...` or `API_KEY: ...`. credscan's
-`mcp-config-secret` rule parses the JSON structurally instead of guessing at line shape: it
-fires on any JSON document with a top-level `mcpServers` object (`.mcp.json`, `.cursor/mcp.json`,
-VS Code's `mcp.json`), so it generalizes across the convention rather than needing a bespoke regex
-per tool. Agent files with a different shape — `.claude/settings.json`, `.codex/config.toml`,
-session transcripts — are still scanned, by the generic detectors below.
+credscan focuses on files that can contain developer credentials: ordinary source trees, the git
+index, and local AI-agent configuration or session artifacts. Its `mcp-config-secret` rule parses
+JSON documents with a top-level `mcpServers` object and examines literal values in `env`,
+`headers`, and `args` fields. Generic rules still scan other agent files, including
+`.claude/settings.json`, `.codex/config.toml`, and session transcripts.
 
 ## Usage
 
@@ -177,7 +178,8 @@ This project is, and will remain, free and open source. As maintainer I commit t
 - **Best-effort, transparent triage.** Issues and pull requests are read and answered; security
   reports are acknowledged within 72 hours (see [`SECURITY.md`](SECURITY.md)).
 - **A welcoming community** governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
-- **Reproducible builds.** Green CI — lint, tests, and CodeQL security analysis — on every change.
+- **Reproducible builds.** Green CI — lint, tests, dependency audit, and CodeQL security analysis
+  — on every change.
 
 ## License
 
