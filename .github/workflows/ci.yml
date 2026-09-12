@@ -49,6 +49,6 @@ jobs:
         run: |
           python -m pip install --quiet --upgrade pip pip-audit
           # Audit exact installed third-party versions. The unpublished editable project is
-          # excluded by location, rather than ignored through a non-strict audit failure.
-          python -c "from importlib.metadata import distributions; from pathlib import Path; root=Path.cwd().resolve(); local=lambda d:d.locate_file('').resolve().is_relative_to(root) or d.read_text('direct_url.json') is not None; records=sorted({d.name+'=='+d.version for d in distributions() if not local(d)}); Path('.pip-audit-requirements.txt').write_text(chr(10).join(records)+chr(10), encoding='utf-8')"
+          # excluded only when its parsed local source is exactly this checkout.
+          python scripts/generate_audit_requirements.py --root . --output .pip-audit-requirements.txt
           python -m pip_audit --strict --no-deps --requirement .pip-audit-requirements.txt
